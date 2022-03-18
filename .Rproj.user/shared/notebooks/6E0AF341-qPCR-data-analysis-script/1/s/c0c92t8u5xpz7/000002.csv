@@ -1,0 +1,13 @@
+"0","Ct_values <-"
+"0","  read_excel(path, sheet = ""data"", skip = 0) %>%  # import sheet ""data"""
+"0","  dplyr::select(""Well Position"", ""CT"") %>%  # only select columns required for the analysis   # replace NA values"
+"0","  mutate(CT = as.numeric(CT)) %>%  # set Ct as numeric"
+"0","  mutate(CT = replace(CT, is.na(CT), """")) # replace NA values "
+"2","New names:
+* `Delta Ct SE` -> `Delta Ct SE...20`
+* `Delta Ct SE` -> `Delta Ct SE...21`
+"
+"2","Warning:"
+"2"," [38;5;252mProblem while computing `CT = as.numeric(CT)`.
+[36mℹ[38;5;252m NAs introduced by coercion[39m
+"

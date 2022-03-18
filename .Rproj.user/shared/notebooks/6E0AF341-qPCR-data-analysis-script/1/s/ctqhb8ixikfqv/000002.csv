@@ -1,0 +1,12 @@
+"0","df1 <- df %>%"
+"0","  select(Sample, Gene, CT, Condition) %>% # columns of interest"
+"0","  group_by(Gene, Sample, Condition) %>% # group values by Gene, Sample and Condition"
+"0","  summarize(CT = mean(CT, na.rm = T)) %>% # use the summarize function (with z) to calculate the mean CT - overwriting the CT column. Remove NA values, since it stops the function from working"
+"0","  pivot_wider("
+"0","    id_cols = c(Sample, Condition),"
+"0","    names_from = Gene,"
+"0","    values_from = CT"
+"0","  ) # restructure the data frame to enable easy data manipulation"
+"1","[38;5;252m`summarise()` has grouped output by 'Gene', 'Sample'. You can
+override using the `.groups` argument.[39m
+"

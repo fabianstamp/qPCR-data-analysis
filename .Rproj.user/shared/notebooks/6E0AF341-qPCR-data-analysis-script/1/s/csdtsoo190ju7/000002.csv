@@ -1,0 +1,7 @@
+"0","condition  <-"
+"0","  read_excel(path,"
+"0","             sheet = ""condition"","
+"0","             col_types = ""text"","
+"0","             col_names = TRUE) %>%   # import sheet ""condition"""
+"0","  mutate(Condition = factor(Condition, levels = condition_levels)) # define ""Condition"" as factor and set levels"
+"0","#head(Condition, n = 3)"
