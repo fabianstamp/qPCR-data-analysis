@@ -1,5 +1,5 @@
 Type: Skript
-
+Package: qPCR analysis
 Version: 1.0.0
 Author: fabianstamp
 Maintainer: Fabian Stamp <fabian_stamp@psych.mpg.de>
@@ -10,15 +10,6 @@ Description: This is a simple R Markdown script for researchers interested in tr
 License: MIT
 Depends:
     R (>= 2.10)
-
-Package:
-readxl
-tidyverse
-ggpubr
-rstatix
-stats
-car
-kableExtra
 
 Imports:
 readxl
