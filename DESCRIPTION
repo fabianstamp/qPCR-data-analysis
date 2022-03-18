@@ -1,5 +1,5 @@
-Type: Skript
-Package: qPCR-data-analysis-script
+Type: Package
+Package: qPCR-data-analysis
 Version: 1.0.0
 Author: fabianstamp
 Maintainer: Fabian Stamp <fabian_stamp@psych.mpg.de>
