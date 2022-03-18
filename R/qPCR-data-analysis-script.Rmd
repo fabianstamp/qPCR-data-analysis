@@ -1,6 +1,6 @@
 ---
 title: "Analysis of gene expresssion data from qPCR in R"
-author: "FStamp"
+author: ""
 date: "Last time modified: `r format(Sys.time(), '%B %d, %Y')`"
 output: 
   html_document:
@@ -647,7 +647,7 @@ print(gene_1_plot)
 
 
 ```{r}
-sessionInfo()
+#sessionInfo()
 ```
 
 
