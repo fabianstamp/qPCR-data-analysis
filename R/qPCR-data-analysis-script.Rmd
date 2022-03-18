@@ -1,11 +1,17 @@
 ---
 title: "Analysis of gene expresssion data from qPCR in R"
 author: ""
-date: "Last time modified: `r format(Sys.time(), '%B %d, %Y')`"
-output: 
-  html_document:
-    toc: true
-    toc_depth: 3    
+date: "`r format(Sys.time(), '%B, %Y')`"
+output:
+  bookdown::html_document2:
+    fig_caption: TRUE # render html with figure captions
+    number_section: TRUE # if you want number plots
+    toc: TRUE # table of content true
+    toc_depth: 3 # upto three depths of headings (specified by #, ## and ###)
+    toc_float: 
+      colapsed: FALSE
+      smooth_scroll: FALSE
+   # highlight: tango # specifies the syntax highlighting style
 ---
 
 ```{r setup, include=FALSE}
@@ -17,18 +23,17 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## What is this script for?  
 
-This is a simple R Markdown script for researchers interested in transitioning their qPCR analysis from GUI based platforms such as Prism or Excel to R. An example data set is provided (**qPCR_data.xlsx**) containing experimental data comparing the effect of a gene KO on the expression of 5 genes of interest.
+This is a simple R Markdown script for researchers interested in transitioning their qPCR analysis from GUI based platforms such as Prism or Excel to R. All files required to run the analysis with an example data set can be found [here](https://github.com/fabianstamp/qPCR-data-analysis).
 
+## How to start?    
 
-## What information is required?    
+You can run the analysis as is with the provided files. They include this script (**qPCR-data-analysis-script.Rmd**) and an example data set (**qPCR_data.xlsx**).  If you want to run the analysis with your own experimental data, you will required the following information:  
 
-The following information is required for the analysis (see **qPCR_data.xlsx**):  
-
- * A list matching each tested sample with a condition (*condition*)
- * Positional information of replicates on the plate (*replicates*)
- * Positional information of samples on the plate (*samples*)
- * Positional information of genes tested on the plate (*genes*)  
- * Raw data from the light cycler containing the Ct values per well (*data*)
+ * A list matching each tested sample with a condition (**condition**)
+ * Positional information of replicates on the plate (**replicates**)
+ * Positional information of samples on the plate (**samples**)
+ * Positional information of genes tested on the plate (**genes**)  
+ * Raw data from the light cycler containing the Ct values per well (**data**)
  
 The example data was acquired using QuantStudio 7 (384 well plate). When adapting this script, make sure to work with the same format (384 well). In case of using a different format (e.g. 96 well), you will have to change the import options accordingly.
 
@@ -38,7 +43,7 @@ The workflow consists of 3 steps:
 
 1. **Data import and formatting**: for easy implementation, the experimental data is imported directly from an Excel file containing the 5 sheets: *condition*, *replicates*, *samples*, *genes* and *data*.  
   
-2. **Data analysis**: this includes (A) calculation of normalized gene expression, (B) calculation of ∆∆Ct and Log2FFoldChange per sample and (C) selection of adequate statistics using a decision tree.  
+2. **Data analysis**: this includes (**A**) calculation of normalized gene expression, (**B**) calculation of ∆∆Ct and Log2FoldChange per sample and (**C**) selection of adequate statistics using a decision tree.  
 
 3. **Plotting**: visualization of data using ggplot2 with the results from the statistical tests indicating group differences.
 
@@ -46,13 +51,13 @@ The workflow consists of 3 steps:
 # Setup  
 
 ## Load libraries
-```{r message=FALSE}
-library(readxl) # the readxl is used to import data from excel (.xlsx)
+```{r libraries, message=FALSE}
+library(readxl) # readxl is used to import data from excel (.xlsx)
 library(tidyverse) # data wrangling
-library(ggpubr) # required for stat_compare_means()
+library(ggpubr) # required for stat_compare_means() and stat_pvalue_manual()
 library(rstatix)  # https://github.com/kassambara/rstatix
-library(stats) # required for padjust() function
-library(car) # required for leveneTest() function
+library(stats) # required for padjust()
+library(car) # required for leveneTest()
 library(kableExtra) # scrollable tables in rendered html report
 ```
 
@@ -62,19 +67,19 @@ library(kableExtra) # scrollable tables in rendered html report
 
 Manually set the experimental "ID" and "Details". These will be used for labeling results and plots.
 
-```{r}
+```{r set IDs}
 ID = "Experiment ID"
 Details = "Brain WT vs KO"
 ```
 **Define levels of the experimental condition**  
 Set the order of levels of your experimental conditions. This will determine in which order the results are plotted.
-```{r}
+```{r set condition levels}
 condition_levels <- c("WT", "KO") #set order of levels
 ```
 
 **Define reference genes**  
 Define which genes will be used as a reference for normalization of gene expression.
-```{r}
+```{r set HKs}
 HK1 = "reference_gene_1" #reference gene 1
 HK2 = "reference_gene_2" #reference gene 2
 HK <- c("reference_gene_1","reference_gene_2")  # vector of both reference genes
@@ -83,7 +88,7 @@ HK <- c("reference_gene_1","reference_gene_2")  # vector of both reference genes
 #  Load data
 
 **Set path to files**  
-```{r}
+```{r set path to files}
 # Path to the qPCR_data.xlsx file
 path <- file.path("..", "data", "qPCR_data.xlsx")
 ```
@@ -91,11 +96,11 @@ path <- file.path("..", "data", "qPCR_data.xlsx")
 
 ## Load Ct values from light cycler
 
-Note: In case your light cycler results table contains a large header, you can skip these rows by using the skip argument.
-```{r}
-Ct_values <-
+**Note:** In case your light cycler results table contains a large header, you can skip these rows by using the skip argument.
+```{r load cycler data, message=FALSE, warning=FALSE}
+data <-
   read_excel(path, sheet = "data", skip = 0) %>%  # import sheet "data"
-  dplyr::select("Well Position", "CT") %>%  # only select columns required for the analysis   # replace NA values
+  dplyr::select("Well Position", "CT") %>%  # only select columns required for the analysis
   mutate(CT = as.numeric(CT)) %>%  # set Ct as numeric
   mutate(CT = replace(CT, is.na(CT), "")) # replace NA values 
 ```
@@ -104,9 +109,9 @@ Ct_values <-
 ## Load gene list
 
 Import the positional information of which gene was tested in each well. 
-```{r}
+```{r load genes}
 genes <-
-  read_excel(path, sheet = "genes", col_names = paste0("V", 1:24)) %>% # import sheet 1 and add provisional column headers
+  read_excel(path, sheet = "genes", col_names = paste0("V", 1:24)) %>% # import sheet "genes" and add provisional column headers
   mutate(row = LETTERS[1:16]) %>% # 16 rows: add the Letters to create positional information
   pivot_longer(cols = c(1:24)) %>% # 24 columns
   mutate(name = substring(name, 2)) %>% # This will create a positional coding, replacing the name "V" with a number
@@ -120,20 +125,20 @@ genes <-
 
 ## Load condition information  
 Information matching sample numbers with the corresponding condition (e.g. Sample 1 = WT, Sample 2 = KO).
-```{r}
+```{r load condition}
 condition  <-
   read_excel(path,
              sheet = "condition",
              col_types = "text",
              col_names = TRUE) %>%   # import sheet "condition"
   mutate(Condition = factor(Condition, levels = condition_levels)) # define "Condition" as factor and set levels
-#head(Condition, n = 3)
+#head(condition)
 ```
 
 ## Load sample information
 
 Load sheet containing positional information of samples, i.e. which sample was measured in which well.
-```{r}
+```{r load samples}
 samples <-
   read_excel(
     path,
@@ -150,7 +155,7 @@ samples <-
   select("Well Position", Sample) %>%   # Select columns
   replace(is.na(.), "") %>%  # replace NA values
   dplyr::mutate(Sample = factor(Sample))  # convert "Sample" to factor
-#head(samples, n = 3)
+#head(samples)
 ```
 
 
@@ -159,7 +164,7 @@ samples <-
 
 Load sheet containing positional information of replicates, i.e. which replicate was measured in which well. Usually you will have 2-3 replicates per sample and gene.
 
-```{r}
+```{r load reolicates}
 replicates <-
   read_excel(
     path,
@@ -182,10 +187,10 @@ replicates <-
 
 ## Merge data frames  
 
-Merge the *condition*, *replicates*, *samples*, *genes* and *CT* data frames into one data frame (df). "NTP" is used here to refer to "no template" containing control wells that are not used for the expression analysis.
+Merge the **condition**, **replicates**, **samples**, **genes** and **data** tibbles into one data frame (df). "NTP" is used here to refer to "no template" containing control wells that are not used for the expression analysis.
   
-```{r}
-df <- merge(Ct_values, samples, by="Well Position") %>% 
+```{r merge data frames}
+df <- merge(data, samples, by="Well Position") %>% 
   merge(genes, by="Well Position") %>% 
   merge(replicates, by = "Well Position") %>% 
   merge(condition, by = "Sample") %>% 
@@ -203,34 +208,35 @@ df <- merge(Ct_values, samples, by="Well Position") %>%
 
 Plot raw Ct values to identify outliers that result from technical issues (e.g. pippeting errors).  
 
-```{r}
+```{r plot raw Ct,fig.height = 10, fig.width = 15, fig.align = "center"}
 Ct_plot <- df %>%
   ggplot(aes(Sample, CT, fill = Gene)) +
   geom_boxplot(alpha = 0.5) +
   geom_point(aes(fill = Gene), shape = 21,
-             size = 1) +
+             size = 3) +
   facet_wrap(Gene ~ Condition,
              scales = "free") + # split plot
-  labs(x = "Sample", y = "CT") + #Axis labels
-  ggtitle("CT values") + #Title
-  theme(plot.title = element_text(hjust = 0.5)) + #Center title
+  labs(x = "Sample", y = "CT") + # axis labels
+  ggtitle("CT values") + # title
+  theme(plot.title = element_text(hjust = 0.5)) + # center title
   theme(legend.position = "right") + # position of legend
-  theme_classic() + # classic theme
-  theme(plot.title = element_text(size = 20, face = "bold"))    # increase title size
-  
-# set font size for facet label titles
-# Save the plot
+  theme_classic() + # add classic theme
+  theme(plot.title = element_text(size = 20, face = "bold")) # increase title size
+
+# save plot
 ggsave(
   "Ct_plot.pdf",
   plot = Ct_plot,
   device = "pdf",
   path = "../output/plots",
   scale = 1,
+  height = 20,
+  width = 30,
   units = "cm",
   dpi = 300,
   limitsize = TRUE,
 )
-#print to screen
+# print to screen
 print(Ct_plot)
 ```
 
@@ -239,17 +245,17 @@ print(Ct_plot)
 
 **Steps:**  
 
-1. Calculate mean CT values across technical replicates per sample and gene.  
+**1.** Calculate mean CT values across technical replicates per sample and gene.  
 
-2. Calculate the geometric mean for the reference genes (HKs) you want to normalize the expression to.  
+**2.** Calculate the geometric mean for the reference genes (HKs) you want to normalize the expression to.  
 
-3. Calculate DCT per sample: ∆Ct = Ct (gene of interest) – geometric mean of Ct (reference genes).  
+**3.** Calculate DCT per sample: ∆Ct = Ct (gene of interest) – geometric mean of Ct (reference genes).  
 
-4. Calculate DDCT per sample: ∆∆Ct = ∆Ct (KO sample) – ∆Ct (WT samples average).  
+**4.** Calculate DDCT per sample: ∆∆Ct = ∆Ct (KO sample) – ∆Ct (WT samples average).  
 
-5. Calculate the relative fold gene expression (FoldChange) per sample: Fold gene expression = 2^-(∆∆Ct).  
+**5.** Calculate the relative fold gene expression (FoldChange) per sample: Fold gene expression = 2^-(∆∆Ct).  
 
-6. Transform LogFoldChange to log2 scale(Log2FoldChange) for statistical testing.  
+**6.** Transform LogFoldChange to log2 scale(Log2FoldChange) for statistical testing.  
 
 
 
@@ -257,42 +263,42 @@ print(Ct_plot)
 
 ### (1) Calculate mean CT values acrtoss techical replicates per sample and gene  
 
-```{r}
+```{r calculate mean Ct, message=FALSE}
 df1 <- df %>%
-  select(Sample, Gene, CT, Condition) %>% # columns of interest
+  select(Sample, Gene, CT, Condition) %>% # select columns of interest
   group_by(Gene, Sample, Condition) %>% # group values by Gene, Sample and Condition
-  summarize(CT = mean(CT, na.rm = T)) %>% # use the summarize function (with z) to calculate the mean CT - overwriting the CT column. Remove NA values, since it stops the function from working
+  summarize(CT = mean(CT, na.rm = T)) %>% # use the summarize function to calculate the mean CT - overwriting the CT column. Remove NA values, since it stops the function from working
   pivot_wider(
     id_cols = c(Sample, Condition),
     names_from = Gene,
     values_from = CT
-  ) # restructure the data frame to enable easy data manipulation
+  ) # pivot to wide format
 ```
-### (2) Calculate the geometric mean of the reference genes
+### (2) Calculate the geometric mean expression of reference genes
 
-```{r}
+```{r calculate geometric mean of HKs, message=FALSE}
 df2 <- df1 %>%
   gather(Gene, CT_mean,-c(Sample, Condition, all_of(HK)))  # convert to long format
 
-# Calculate the geometric mean of the reference genes
-geo_mean <- df2 %>%  select(HK1, HK2) %>%
+# Calculate the geometric mean for reference genes
+geo_mean <- df2 %>%  select(all_of(HK)) %>%
   gather(key = Ref, value = value,-Sample) %>%
   group_by(Sample) %>%
-  summarise(Geo_HK = exp(mean(log(value))))  # calculate geometric mean of HK genes in a new column
+  summarise(Geo_HK = exp(mean(log(value))))
 
 # join df2 with geo_mean
 df3 <- df2 %>% 
-inner_join(geo_mean, by = "Sample") # join with table containing geometric mean
+inner_join(geo_mean, by = "Sample")
 ```
 
 ### (3-6) Calculate ∆Ct, ∆∆Ct and Log2FoldChange  
 
-```{r}
+```{r Log2FoldChange}
 df3 <- df3 %>% 
 mutate(DCT = CT_mean - Geo_HK) %>%  # calculate delta CT by subtracting the geometric mean of the house keeper genes from the individual sample CT means
   ungroup() %>% 
-  group_by(Gene, Condition) %>% # Group by Gene and Condition 
-  mutate(DCT_mean_WT = mean(DCT)) %>%  # Calculate DCT for each Condition. There might be a more elegant version to do this only for the WT animals
+  group_by(Gene, Condition) %>% # group by Gene and Condition 
+  mutate(DCT_mean_WT = mean(DCT)) %>%  # calculate DCT for each Condition. There might be a more elegant version to do this only for the WT animals (?)
   ungroup() %>% 
   group_by(Gene) %>% 
   mutate(DDCT = DCT - DCT_mean_WT[Condition=="WT"]) %>% # subtract the DCT of the WT animals from the DCT of the individual samples (treated sample - untreated sample)
@@ -304,28 +310,25 @@ mutate(DCT = CT_mean - Geo_HK) %>%  # calculate delta CT by subtracting the geom
 ### Optional: Calculate N number for labeling plots  
 
 Determine the N per condition and create a label to add to plots
-```{r}
+```{r N for plotting}
 df3 <-df3 %>% 
   group_by(Condition, Gene) %>% 
-   mutate( N = n()) %>% # Add N number
+   mutate( N = n()) %>% # add N number
   mutate(Condition_label = paste0(Condition,"\n","(N=",N,")")) %>% # add annotation for plots
   mutate(Condition_label = as.factor(Condition_label)) %>%  # define annotation as factor
-  mutate( Experiment = as.factor(ID)) %>% 
-     mutate(Gene_name = str_extract(Gene, "^.*?(?=_)"), .before = "Gene")  %>% # Add "clean" gene name for plotting
-  mutate(Gene_name = ifelse(!is.na(Gene_name), Gene_name, Gene)) %>% # Create column containing only gene name by merging Gene with Gene_name if Gene_name contains "NA" values
+  mutate(Experiment = as.factor(ID)) %>% 
   ungroup()
 #head(df3)
-
 ```
 
 
 ## Statistical analysis  
 
-Gene expression values are often not normally distributed and heavily skewed. Specifically, down-regulated genes have a value between 0 and 1 (1 = no expression change), while up-regulated genes can have a value between 1 and positive infinity. By log transforming the gene expression ratios, they become symmetrical distributed around 0. Therefore, for the statistical analysis you should log-transform the expression data with the assumption that gene regulation and protein expression follow a log-normal distrubution.
+Gene expression values are often non normally distributed and heavily skewed. Specifically, down-regulated genes have a value between 0 and 1 (1 = no expression change), while up-regulated genes can have a value between 1 and positive infinity. By log transforming the gene expression ratios, they become symmetrical distributed around 0. Therefore, for the statistical analysis you should log-transform the expression data with the assumption that gene regulation and protein expression follow a log-normal distrubution.
 
 ### Calculate summary statistics per condition  
 
-```{r}
+```{r summary statistics, message=FALSE}
 #subset data frame
 df_stats <- df3 %>%
   select("Condition", "Log2FoldChange", "Gene")
@@ -338,7 +341,7 @@ df_sum <- df_stats %>%
     mean = round(mean(Log2FoldChange), digits = 2),
     # calculate mean
     sd = round(sd(Log2FoldChange), digits = 2),
-    #calculate sd
+    # calculate sd
     p_shapiro = round(shapiro.test(Log2FoldChange)$p.value, digits =
                         3) # Shapiro-Wilk Test for normality
   ) %>%
@@ -354,7 +357,7 @@ df_sum %>%
 
 ## Define the statistical tests that will be applied to the data  
 
-```{r}
+```{r define stats functions}
 ## Define functions (levene/ t/ welch/ wilcox) that allow you to obtain the respective p-values
 fun.levene.test <- function(x){
   a = leveneTest(Log2FoldChange ~ Condition, data = x)
@@ -380,13 +383,13 @@ fun.wilcox.test <- function(x){
 
 ## Create a nested data frame and run statistical tests  
 
-```{r}
+```{r nested df for stat analysis}
 # Create a nested data frame that contains a list of lists for individual genes. Subsequently you will apply the test functions on each element (list) nested within the data frame.
 df_nested <- df_stats%>% 
   group_by(Gene) %>% 
   nest()
 
-# perform levene/ttest/welch/wilcox with each element of the nested data
+# perform levene/ t/ welch/ wilcox testwith each element of the nested data frame
 df_com <- df_nested %>% 
   mutate(
     levene = map_dbl(data, fun.levene.test), 
@@ -395,7 +398,7 @@ df_com <- df_nested %>%
     wilcox = map_dbl(data, fun.wilcox.test)
   )
 
-# combine it with by columns
+# combine with df_sum
 df_sumcom <- df_sum %>% 
   left_join(df_com, by = "Gene")
 ```
@@ -403,9 +406,9 @@ df_sumcom <- df_sum %>%
 
 ## Define and run the decision tree  
 
-All tests will be run on the data, however the comparison decision tree will select and highlight the appropriate test that meets the requirements (distribution of data and variance).  
+All tests will be run on the data, however the comparison decision tree will select and highlight the appropriate test that meets the requirements (based onn the distribution of the data and variance).  
 
-```{r}
+```{r decision tree}
 # Create the comparison decision tree
 pipe_com_choice <- . %>%
   mutate(shapiro = ifelse(p_shapiro_WT < 0.05 |
@@ -441,10 +444,10 @@ df_sumcom_choice <- df_sumcom %>%
 ## Multiple testing correction  
 Perform multiple testing correction using the Benjamini & Hochberg (1995) method.  
 
-```{r}
+```{r BH correction}
 # calculate adjusted p values with the Benjamini & Hochberg (1995) method  ("BH" or its alias "fdr")
-df_sumcom_choice <-df_sumcom_choice %>% 
-  mutate(padj = p.adjust(test_p, method = "BH"),n = length(Gene)) %>% 
+df_sumcom_choice <- df_sumcom_choice %>% 
+  mutate(padj = p.adjust(test_p, method = "BH"), n = length(Gene)) %>% 
   mutate(padj_star = case_when(padj  < 0.0001 ~ "****",
                                 padj  < 0.001 ~ "***",
                                 padj < 0.01 ~ "**",
@@ -457,12 +460,10 @@ df_sumcom_choice <-df_sumcom_choice %>%
 
 The column "compare_which" indicates which test was selected with the decision tree, with "test_p" and "padj" indicating the associated test values.  
 
-```{r}
+```{r stats final}
 results_stats_final <- df_sumcom_choice %>% 
   select(!data) %>% 
-  mutate(ID = ID, Details = Details, Gene_name = str_extract(Gene, "^.*?(?=_)"), .before = "Gene") %>% # Add ID and Details info. Also Create a new column witht eh gene name that does not contain the primer ending
-  mutate(Gene_name = ifelse(!is.na(Gene_name), Gene_name, Gene)) # Create column containing onlz gene name by merging Gene with Gene_name if Gene_name contains "NA" values
-
+  mutate(ID = ID, Details = Details) # add ID and Details info
 # save to table
 write.csv(results_stats_final, paste("../output/tables/results_stats_final_",ID,".csv", sep = ""))
 
@@ -476,19 +477,19 @@ results_stats_final %>%
 
 ### Create a dataframe for plotting the manually calculated p values  
 
-This requires some cheating, since the stat_pvalue_manual() is usually used with predefined test functions. To use this function we are creating a data frame that looks like the output of these functions but contains our p values and p star symbols.
+This requires some cheating, since stat_pvalue_manual() (ggpubr) is usually used with predefined test functions. To use this function for adding the statistics to plots, we are creating a data frame that looks like the output of these functions but contains our p values and p star symbols.
 
-```{r}
-# Create a data frame that contains group1, group2. .y.and condition_+label
+```{r stat test for plotting}
+# create a data frame that contains group1, group2. .y.and condition_+label
 stat.test <- df_stats %>%
   group_by(Gene) %>%
-  mutate(group1 = paste0("WT", "\n", "(N=", 6, ")")) %>% # Create column containing WT x axis labels
-  mutate(group2 = paste0("KO", "\n", "(N=", 6, ")")) %>% # Create column containing KO x axis labels
+  mutate(group1 = paste0("WT", "\n", "(N=", 6, ")")) %>% # create column containing WT x axis labels
+  mutate(group2 = paste0("KO", "\n", "(N=", 6, ")")) %>% # create column containing KO x axis labels
   get_y_position(formula = Log2FoldChange ~ Condition, fun = "max") %>%  # calculate the y.position
   add_x_position() %>% # add x positions 1 and 2
   mutate(Condition = "KO") %>% # a Condition column is required for mapping of the statistics though it seems to not mater how it is filled.
   left_join(results_stats_final, stat.testx, by = "Gene") %>% # use left_join to add the results from the manually calculated statistics
-  distinct(Gene, .keep_all = TRUE) # Since the merging inflated the row number which now does not match the ggplot input, you need to select a subset. This subset contains all relevant details for each gene
+  distinct(Gene, .keep_all = TRUE) # since the merging inflated the row number which now does not match the ggplot input, you need to select a subset.This subset contains all relevant details for each gene
 
 stat.test %>% 
   kable("html") %>%
@@ -506,13 +507,13 @@ stat.test %>%
 
 Feel free to replace the Hex colors with color codes of your choosing.  
 
-```{r}
+```{r set colors}
 col <- c('#009ADC', '#FF1F5B')
 ```
 
 **Define a custom theme/format to apply to the plots** 
 
-Defining a custom theme that can be applied to the plots. There are countless options that are not included and can be found online.  
+Define a custom theme that can be applied to the plots. There are countless options that are not included and can be found online.  
 
 ```{r}
 
@@ -530,11 +531,11 @@ theme_custom <- theme(text = element_text(family = "", size = 14),
 ```
 
 
-### Plotted results with Log2FoldChange  
+## Plot overview of all results
 
 Plot of all results faceted by gene.  
 
-```{r}
+```{r plot all genes,fig.height = 5, fig.width = 7, fig.align = "center"}
 all_genes_plot <- df3 %>%
   ggplot(aes(x = Condition, y = Log2FoldChange, fill = Condition)) +
   geom_boxplot(alpha = 0.5, width = .5) + # add box plot
@@ -548,9 +549,9 @@ all_genes_plot <- df3 %>%
   ) +
 geom_hline(yintercept = 0, linetype = "dashed") + # add horizontal line indicating 0
   ggtitle(paste(ID)) + # add title based on ID
-  facet_wrap( ~ Gene, nrow = 1) + #facet wrap by Gene
+  facet_wrap( ~ Gene, nrow = 1) + # facet wrap by Gene
   stat_summary( # calculate and add mean expression value as black diamond
-    fun.y = mean,
+    fun = mean,
     colour = "black",
     geom = "point",
     shape = 18,
@@ -558,39 +559,42 @@ geom_hline(yintercept = 0, linetype = "dashed") + # add horizontal line indicati
     position = position_dodge(width = .75),
     show.legend = FALSE
   ) +
-  stat_pvalue_manual(stat.test, label = 'padj_star', tip.length = 0.01) + # add statistics
+  stat_pvalue_manual(stat.test, label = 'padj_star', tip.length = 0.01, size = 7) + # add statistics
   theme_custom # apply custom theme formatting
 
-# Save the plot
+# save plot
 ggsave(
   "all_genes_plot.pdf",
   plot = all_genes_plot,
   device = "pdf",
   path = "../output/plots",
-  height = 10,
-  width = 15,
+  height = 15,
+  width = 20,
   scale = 1,
   units = "cm",
   dpi = 300,
   limitsize = TRUE,
 )
-#print to screen
+# print to screen
 print(all_genes_plot)
 ```
 
 
 
-### Plot results for individual gene
+## Plot results for individual gene
 
-The gene of interest is selected with the filter() function. IMPORTANT: Make sure to match your selection with the gene name in the stat_pvalue_manual() call that selects the fitting statistics results.  
-Note: "Condition_label" containing the N number is used instead of "Condition" for the X-axis labels here.
+The gene of interest is selected with the filter() function.  
 
-```{r, height = 10, width = 10}
+**IMPORTANT**: Make sure to match your selection with the gene name in the stat_pvalue_manual() call that selects the fitting statistics results.  
+
+"Condition_label" containing the N number is used instead of "Condition" for the X-axis labels here.
+
+```{r plot selected gene, fig.height = 4, fig.width = 4, fig.align = "center"}
 gene_1_plot <- df3 %>%
   filter(Gene == "gene_1") %>%
   ggplot(aes(x = Condition_label, y = Log2FoldChange, fill = Condition)) +
   geom_boxplot(alpha = 0.5, width = .5) +
-  scale_fill_manual(values = col) + #Change color to "col"
+  scale_fill_manual(values = col) + # change color to "col"
   geom_point(
     shape = 21,
     size = 2,
@@ -598,11 +602,11 @@ gene_1_plot <- df3 %>%
     color = "black",
     alpha = 0.5
   ) +
-  ggtitle("Gene_1") + # Title
+  ggtitle("Gene_1") + # title
   xlab("Condition") +
   theme(
     plot.title = element_text(hjust = 0.5),
-    # Center title
+    # center title
     axis.text.x = element_text(
       size = 10,
       hjust = 0.5,
@@ -613,7 +617,7 @@ gene_1_plot <- df3 %>%
     strip.text = element_text(size = 10)
   ) + # set font size for facet label titles
   stat_summary(
-    fun.y = mean,
+    fun = mean,
     colour = "black",
     geom = "point",
     shape = 18,
@@ -622,11 +626,11 @@ gene_1_plot <- df3 %>%
     show.legend = FALSE
   ) +  # add the mean to the plots
   
-  stat_pvalue_manual(filter(stat.test, Gene == "gene_1"), label = 'padj_star') + # select appropriate 
+  stat_pvalue_manual(filter(stat.test, Gene == "gene_1"), label = 'padj_star', size = 7) + # select appropriate 
     theme_custom # apply custom theme formatting
 
 
-# Save the plot
+# save plot
 ggsave(
   "gene_1_plot.pdf",
   plot = gene_1_plot,
@@ -639,7 +643,7 @@ ggsave(
   dpi = 300,
   limitsize = TRUE,
 )
-#print to screen
+# print to screen
 print(gene_1_plot)
 
 ```
