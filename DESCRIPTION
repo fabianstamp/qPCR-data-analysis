@@ -11,6 +11,15 @@ License: MIT
 Depends:
     R (>= 2.10)
 
+Package:
+readxl
+tidyverse
+ggpubr
+rstatix
+stats
+car
+kableExtra
+
 Imports:
 readxl
 tidyverse
