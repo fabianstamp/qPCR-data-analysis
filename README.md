@@ -13,10 +13,10 @@ You can run the analysis as is with the provided files. They include this script
 * Positional information of samples on the plate (**samples**)
 * Positional information of genes tested on the plate (**genes**)  
 * Raw data from the light cycler containing the Ct values per well (**data**)
- 
+
 The example data was acquired using QuantStudio 7 (384 well plate). When adapting this script, make sure to work with the same format (384 well). In case of using a different format (e.g. 96 well), you will have to change the import options accordingly.
 
-## Analysis details 
+## Analysis details
 
 The workflow consists of 3 steps:  
 
