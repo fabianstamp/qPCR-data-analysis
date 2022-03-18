@@ -3,7 +3,7 @@ title: "Analysis of gene expresssion data from qPCR in R"
 author: "FStamp"
 date: "Last time modified: `r format(Sys.time(), '%B %d, %Y')`"
 output: 
-  github_document:
+  html_document:
     toc: true
     toc_depth: 3    
 ---
