@@ -2,17 +2,17 @@
 
 ## What is this script for?  
 
-This is a simple R Markdown script for researchers interested in transitioning their qPCR analysis from GUI based platforms such as Prism or Excel to R. All files required to run the analysis with an example data set can be found [here](https://github.com/fabianstamp/qPCR-data-analysis).
+This is a simple R Markdown script for researchers interested in transitioning their qPCR analysis from GUI based platforms such as Prism or Excel to R. All files required to run the analysis with an example data set are provided.
 
-## How to start?    
+## How to start?
 
 You can run the analysis as is with the provided files. They include this script (**qPCR-data-analysis-script.Rmd**) and an example data set (**qPCR_data.xlsx**).  If you want to run the analysis with your own experimental data, you will required the following information:  
 
- * A list matching each tested sample with a condition (**condition**)
- * Positional information of replicates on the plate (**replicates**)
- * Positional information of samples on the plate (**samples**)
- * Positional information of genes tested on the plate (**genes**)  
- * Raw data from the light cycler containing the Ct values per well (**data**)
+* A list matching each tested sample with a condition (**condition**)
+* Positional information of replicates on the plate (**replicates**)
+* Positional information of samples on the plate (**samples**)
+* Positional information of genes tested on the plate (**genes**)  
+* Raw data from the light cycler containing the Ct values per well (**data**)
  
 The example data was acquired using QuantStudio 7 (384 well plate). When adapting this script, make sure to work with the same format (384 well). In case of using a different format (e.g. 96 well), you will have to change the import options accordingly.
 
