@@ -1,8 +1,0 @@
-"0","# calculate adjusted p values with the Benjamini & Hochberg (1995) method  (""BH"" or its alias ""fdr"")"
-"0","df_sumcom_choice <-df_sumcom_choice %>% "
-"0","  mutate(padj = p.adjust(test_p, method = ""BH""),n = length(Gene)) %>% "
-"0","  mutate(padj_star = case_when(padj  < 0.0001 ~ ""****"","
-"0","                                padj  < 0.001 ~ ""***"","
-"0","                                padj < 0.01 ~ ""**"","
-"0","                                padj  < 0.05 ~ ""*"","
-"0","                                padj  > 0.05 ~ ""n.s."")) "

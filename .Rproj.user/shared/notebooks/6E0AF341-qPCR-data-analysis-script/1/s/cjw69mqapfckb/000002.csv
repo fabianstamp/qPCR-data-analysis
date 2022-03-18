@@ -1,8 +1,0 @@
-"0","df <- merge(Ct_values, samples, by=""Well Position"") %>% "
-"0","  merge(genes, by=""Well Position"") %>% "
-"0","  merge(replicates, by = ""Well Position"") %>% "
-"0","  merge(condition, by = ""Sample"") %>% "
-"0","  filter(!CT == ""Undetermined"") %>%  # remove all undetermined wells"
-"0","  mutate(CT = as.numeric(CT)) %>% # define CT as numeric"
-"0","  filter(Sample != ""NTP"")  # drop NTP wells"
-"0","#head(df, n = 3)"

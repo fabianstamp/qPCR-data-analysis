@@ -1,2 +1,0 @@
-"0","# Path to the qPCR_data.xlsx file"
-"0","path <- file.path("".."", ""data"", ""qPCR_data.xlsx"")"

@@ -1,0 +1,33 @@
+Type: Skript
+
+Version: 1.0.0
+Author: fabianstamp
+Maintainer: Fabian Stamp <fabian_stamp@psych.mpg.de>
+
+
+Description: This is a simple R Markdown script for researchers interested in transitioning their qPCR analysis from GUI based platforms such as Prism or Excel to R.
+
+License: MIT
+Depends:
+    R (>= 2.10)
+
+Imports:
+readxl
+tidyverse
+ggpubr
+rstatix
+stats
+car
+kableExtra
+
+Suggests:
+    knitr,
+    markdown,
+    rmarkdown
+
+LinkingTo:
+
+VignetteBuilder:
+    knitr
+
+Encoding: UTF-8

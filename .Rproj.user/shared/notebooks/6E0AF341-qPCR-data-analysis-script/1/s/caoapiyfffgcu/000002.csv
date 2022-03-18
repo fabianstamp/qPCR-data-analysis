@@ -1,3 +1,0 @@
-"0","HK1 = ""reference_gene_1"" #reference gene 1"
-"0","HK2 = ""reference_gene_2"" #reference gene 2"
-"0","HK <- c(""reference_gene_1"",""reference_gene_2"")  # vector of both reference genes"
