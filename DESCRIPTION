@@ -1,5 +1,5 @@
 Type: Package
-Package: qPCR-data-analysis
+Package: qPCRDataAnlysis
 Version: 1.0.0
 Author: fabianstamp
 Maintainer: Fabian Stamp <fabian_stamp@psych.mpg.de>
