@@ -1,4 +1,4 @@
-# qPCR-data-analysis: Analysis of gene expresssion data from qPCR in R
+# qPCRDataAnalysis: Analysis of gene expression data from qPCR in R
 
 ## What is this script for?  
 

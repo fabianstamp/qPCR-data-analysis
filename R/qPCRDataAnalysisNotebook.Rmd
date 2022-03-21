@@ -1,5 +1,5 @@
 ---
-title: "Analysis of gene expresssion data from qPCR in R"
+title: "Analysis of gene expression data from qPCR in R"
 author: ""
 date: "`r format(Sys.time(), '%B, %Y')`"
 output:
