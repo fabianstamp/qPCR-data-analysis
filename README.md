@@ -6,7 +6,7 @@ This is a simple R Markdown script for researchers interested in transitioning t
 
 ## How to start?
 
-You can run the analysis as is with the provided files. They include this script (**qPCR-data-analysis-script.Rmd**) and an example data set (**qPCR_data.xlsx**).  If you want to run the analysis with your own experimental data, you will required the following information:  
+You can run the analysis as is with the provided files. They include this script (**qPCRDataAnalysisNotebook.Rmd**) and an example data set (**qPCR_data.xlsx**).  If you want to run the analysis with your own experimental data, you will required the following information:  
 
 * A list matching each tested sample with a condition (**condition**)
 * Positional information of replicates on the plate (**replicates**)
